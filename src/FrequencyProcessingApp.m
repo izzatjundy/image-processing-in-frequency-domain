@@ -46,6 +46,8 @@ classdef FrequencyProcessingApp < matlab.apps.AppBase
         T2NotchTable
         T2AddNotchButton
         T2RemoveNotchButton
+        T2InspectButton
+        T2ControlGrid
         T2StatusLabel
 
         % ---- Tab 3: Motion Blur Restoration ----
@@ -59,6 +61,8 @@ classdef FrequencyProcessingApp < matlab.apps.AppBase
         T3PSFAxes
         T3InverseResultAxes
         T3WienerResultAxes
+        T3LengthField
+        T3AngleField
         T3AField
         T3BField
         T3TField
@@ -78,6 +82,7 @@ classdef FrequencyProcessingApp < matlab.apps.AppBase
 
         T2Image = []
         T2Result = []
+        T2LogSpectrum = []
 
         T3DegradedImage = []
         T3OriginalImage = []
@@ -147,8 +152,10 @@ classdef FrequencyProcessingApp < matlab.apps.AppBase
             end
 
             n = numel(specs);
-            paramGrid.RowHeight = repmat({26}, 1, n);
-            paramGrid.ColumnWidth = {'1.3x', '1x'};
+            paramGrid.RowHeight = repmat({32}, 1, n);
+            paramGrid.ColumnWidth = {'1.4x', '1x'};
+            paramGrid.Padding = [6 6 6 6];
+            paramGrid.RowSpacing = 6;
             for i = 1:n
                 spec = specs(i);
                 lbl = uilabel(paramGrid);
@@ -194,9 +201,22 @@ classdef FrequencyProcessingApp < matlab.apps.AppBase
             end
         end
 
-        function img = loadImageDialog(app, promptText)
+        function img = loadImageDialog(app, promptText, defaultSubdir)
             img = [];
-            [file, folder] = uigetfile({'*.png;*.jpg;*.jpeg;*.bmp;*.tif;*.tiff', 'Image Files'}, promptText);
+            % Resolve data directory relative to repository root
+            rootFolder = fileparts(fileparts(mfilename('fullpath')));
+            dataFolder = fullfile(rootFolder, 'data');
+            if nargin >= 3 && ~isempty(defaultSubdir)
+                candidate = fullfile(dataFolder, defaultSubdir);
+                if exist(candidate, 'dir')
+                    dataFolder = candidate;
+                end
+            end
+            if ~exist(dataFolder, 'dir')
+                dataFolder = pwd;
+            end
+            filterSpec = fullfile(dataFolder, '*.png;*.jpg;*.jpeg;*.bmp;*.tif;*.tiff');
+            [file, folder] = uigetfile({'*.png;*.jpg;*.jpeg;*.bmp;*.tif;*.tiff', 'Image Files'}, promptText, filterSpec);
             if isequal(file, 0)
                 return;
             end
@@ -233,6 +253,7 @@ classdef FrequencyProcessingApp < matlab.apps.AppBase
             app.buildTab3();
 
             app.UIFigure.CloseRequestFcn = @(~, ~) delete(app);
+            app.UIFigure.WindowButtonMotionFcn = @(~, ~) app.onWindowMouseMoved();
         end
 
         % ---------------------------- TAB 1 ----------------------------
@@ -274,6 +295,7 @@ classdef FrequencyProcessingApp < matlab.apps.AppBase
             controlPanel.Layout.Row = 1;
             controlPanel.Layout.Column = 2;
             controlPanel.Title = 'Group / Variant / Parameters';
+            controlPanel.Scrollable = 'on';
             cg = uigridlayout(controlPanel);
             cg.RowHeight = {20, 30, 20, 30, '1x'};
             cg.ColumnWidth = {'1x'};
@@ -293,6 +315,7 @@ classdef FrequencyProcessingApp < matlab.apps.AppBase
             app.T1ParamPanel = uipanel(cg);
             app.T1ParamPanel.Layout.Row = 5; app.T1ParamPanel.Layout.Column = 1;
             app.T1ParamPanel.Title = 'Parameters';
+            app.T1ParamPanel.Scrollable = 'on';
             app.T1ParamGrid = uigridlayout(app.T1ParamPanel);
             app.T1ParamGrid.RowHeight = {'1x'};
             app.T1ParamGrid.ColumnWidth = {'1x'};
@@ -301,7 +324,8 @@ classdef FrequencyProcessingApp < matlab.apps.AppBase
             app.T1StatusLabel = uilabel(g);
             app.T1StatusLabel.Layout.Row = 3;
             app.T1StatusLabel.Layout.Column = 1;
-            app.T1StatusLabel.BackgroundColor = [0.93 0.93 0.93];
+            app.T1StatusLabel.BackgroundColor = [0.2 0.2 0.2];
+            app.T1StatusLabel.FontColor = [0.95 0.95 0.95];
             app.T1StatusLabel.Text = 'Ready. Load an input image to begin.';
 
             app.Tab1Registry = filterRegistryTab1();
@@ -352,32 +376,44 @@ classdef FrequencyProcessingApp < matlab.apps.AppBase
             controlPanel.Layout.Row = 1;
             controlPanel.Layout.Column = 2;
             controlPanel.Title = 'Filter / Variant / Parameters';
+            controlPanel.Scrollable = 'on';
             cg = uigridlayout(controlPanel);
-            cg.RowHeight = {20, 30, 20, 30, '1x', '1.3x'};
+            cg.RowHeight = {50, '1x', 0};
             cg.ColumnWidth = {'1x'};
-            cg.Padding = [8 8 8 8];
+            cg.Padding = [6 6 6 6];
             cg.RowSpacing = 6;
+            app.T2ControlGrid = cg;
 
-            l1 = uilabel(cg); l1.Text = 'Filter Type'; l1.Layout.Row = 1; l1.Layout.Column = 1;
-            app.T2GroupDropDown = uidropdown(cg);
+            % Side-by-side header for Filter Type and Variant
+            hg = uigridlayout(cg);
+            hg.Layout.Row = 1; hg.Layout.Column = 1;
+            hg.RowHeight = {18, 28};
+            hg.ColumnWidth = {'1x', '1x'};
+            hg.Padding = [0 0 0 0];
+            hg.RowSpacing = 2;
+            hg.ColumnSpacing = 6;
+
+            l1 = uilabel(hg); l1.Text = 'Filter Type'; l1.Layout.Row = 1; l1.Layout.Column = 1;
+            app.T2GroupDropDown = uidropdown(hg);
             app.T2GroupDropDown.Layout.Row = 2; app.T2GroupDropDown.Layout.Column = 1;
             app.T2GroupDropDown.ValueChangedFcn = @(~, ~) app.onT2GroupChanged();
 
-            l2 = uilabel(cg); l2.Text = 'Variant'; l2.Layout.Row = 3; l2.Layout.Column = 1;
-            app.T2VariantDropDown = uidropdown(cg);
-            app.T2VariantDropDown.Layout.Row = 4; app.T2VariantDropDown.Layout.Column = 1;
+            l2 = uilabel(hg); l2.Text = 'Variant'; l2.Layout.Row = 1; l2.Layout.Column = 2;
+            app.T2VariantDropDown = uidropdown(hg);
+            app.T2VariantDropDown.Layout.Row = 2; app.T2VariantDropDown.Layout.Column = 2;
             app.T2VariantDropDown.ValueChangedFcn = @(~, ~) app.onT2VariantChanged();
 
             app.T2ParamPanel = uipanel(cg);
-            app.T2ParamPanel.Layout.Row = 5; app.T2ParamPanel.Layout.Column = 1;
+            app.T2ParamPanel.Layout.Row = 2; app.T2ParamPanel.Layout.Column = 1;
             app.T2ParamPanel.Title = 'Parameters';
+            app.T2ParamPanel.Scrollable = 'on';
             app.T2ParamGrid = uigridlayout(app.T2ParamPanel);
             app.T2ParamGrid.RowHeight = {'1x'};
             app.T2ParamGrid.ColumnWidth = {'1x'};
-            app.T2ParamGrid.Padding = [6 6 6 6];
+            app.T2ParamGrid.Padding = [4 4 4 4];
 
             app.T2NotchPanel = uipanel(cg);
-            app.T2NotchPanel.Layout.Row = 6; app.T2NotchPanel.Layout.Column = 1;
+            app.T2NotchPanel.Layout.Row = 3; app.T2NotchPanel.Layout.Column = 1;
             app.T2NotchPanel.Title = 'Notch Points (u0, v0)';
             app.T2NotchPanel.Visible = 'off';
             ng = uigridlayout(app.T2NotchPanel);
@@ -395,22 +431,27 @@ classdef FrequencyProcessingApp < matlab.apps.AppBase
             nbg = uigridlayout(ng);
             nbg.Layout.Row = 2; nbg.Layout.Column = 1;
             nbg.RowHeight = {'1x'};
-            nbg.ColumnWidth = {'1x', '1x'};
+            nbg.ColumnWidth = {'1.2x', '1x', '1x'};
             nbg.Padding = [0 0 0 0];
             nbg.ColumnSpacing = 4;
+            app.T2InspectButton = uibutton(nbg, 'push');
+            app.T2InspectButton.Text = 'Inspect Spikes';
+            app.T2InspectButton.Layout.Row = 1; app.T2InspectButton.Layout.Column = 1;
+            app.T2InspectButton.ButtonPushedFcn = @(~, ~) app.onInspectNotchSpikes();
             app.T2AddNotchButton = uibutton(nbg, 'push');
             app.T2AddNotchButton.Text = 'Add Notch';
-            app.T2AddNotchButton.Layout.Row = 1; app.T2AddNotchButton.Layout.Column = 1;
+            app.T2AddNotchButton.Layout.Row = 1; app.T2AddNotchButton.Layout.Column = 2;
             app.T2AddNotchButton.ButtonPushedFcn = @(~, ~) app.onAddNotch();
             app.T2RemoveNotchButton = uibutton(nbg, 'push');
-            app.T2RemoveNotchButton.Text = 'Remove Last';
-            app.T2RemoveNotchButton.Layout.Row = 1; app.T2RemoveNotchButton.Layout.Column = 2;
+            app.T2RemoveNotchButton.Text = 'Remove';
+            app.T2RemoveNotchButton.Layout.Row = 1; app.T2RemoveNotchButton.Layout.Column = 3;
             app.T2RemoveNotchButton.ButtonPushedFcn = @(~, ~) app.onRemoveNotch();
 
             app.T2StatusLabel = uilabel(g);
             app.T2StatusLabel.Layout.Row = 3;
             app.T2StatusLabel.Layout.Column = 1;
-            app.T2StatusLabel.BackgroundColor = [0.93 0.93 0.93];
+            app.T2StatusLabel.BackgroundColor = [0.2 0.2 0.2];
+            app.T2StatusLabel.FontColor = [0.95 0.95 0.95];
             app.T2StatusLabel.Text = 'Ready. Load a degraded image to begin.';
 
             app.Tab2Registry = filterRegistryTab2();
@@ -462,44 +503,66 @@ classdef FrequencyProcessingApp < matlab.apps.AppBase
             controlPanel.Layout.Row = [1 2];
             controlPanel.Layout.Column = 2;
             controlPanel.Title = 'Motion Parameters / PSF';
+            controlPanel.Scrollable = 'on';
             cg = uigridlayout(controlPanel);
-            cg.RowHeight = {20, 28, 20, 28, 20, 28, '1x', 20, 28, 20, 28};
+            cg.RowHeight = {52, 20, 28, 20, 28, 20, 28, '1x', 20, 28, 20, 28};
             cg.ColumnWidth = {'1x'};
             cg.Padding = [8 8 8 8];
             cg.RowSpacing = 4;
 
-            la = uilabel(cg); la.Text = 'a (horizontal extent)'; la.Layout.Row = 1; la.Layout.Column = 1;
-            app.T3AField = uieditfield(cg, 'numeric'); app.T3AField.Value = 0.1;
-            app.T3AField.Layout.Row = 2; app.T3AField.Layout.Column = 1;
+            % Subgrid for Length L and Angle A
+            lagrid = uigridlayout(cg);
+            lagrid.Layout.Row = 1; lagrid.Layout.Column = 1;
+            lagrid.RowHeight = {18, 28};
+            lagrid.ColumnWidth = {'1x', '1x'};
+            lagrid.Padding = [0 0 0 0];
+            lagrid.ColumnSpacing = 6;
+            lagrid.RowSpacing = 2;
 
-            lb = uilabel(cg); lb.Text = 'b (vertical extent)'; lb.Layout.Row = 3; lb.Layout.Column = 1;
-            app.T3BField = uieditfield(cg, 'numeric'); app.T3BField.Value = 0.1;
-            app.T3BField.Layout.Row = 4; app.T3BField.Layout.Column = 1;
+            lblL = uilabel(lagrid); lblL.Text = 'Length (L)'; lblL.Layout.Row = 1; lblL.Layout.Column = 1;
+            lblA = uilabel(lagrid); lblA.Text = 'Angle (deg)'; lblA.Layout.Row = 1; lblA.Layout.Column = 2;
 
-            lt = uilabel(cg); lt.Text = 'T (exposure time)'; lt.Layout.Row = 5; lt.Layout.Column = 1;
+            app.T3LengthField = uieditfield(lagrid, 'numeric'); app.T3LengthField.Value = 17;
+            app.T3LengthField.Layout.Row = 2; app.T3LengthField.Layout.Column = 1;
+            app.T3LengthField.ValueChangedFcn = @(~, ~) app.onT3LengthAngleChanged();
+
+            app.T3AngleField = uieditfield(lagrid, 'numeric'); app.T3AngleField.Value = 0;
+            app.T3AngleField.Layout.Row = 2; app.T3AngleField.Layout.Column = 2;
+            app.T3AngleField.ValueChangedFcn = @(~, ~) app.onT3LengthAngleChanged();
+
+            la = uilabel(cg); la.Text = 'a (row motion = L*sin(\theta))'; la.Layout.Row = 2; la.Layout.Column = 1;
+            app.T3AField = uieditfield(cg, 'numeric'); app.T3AField.Value = 0;
+            app.T3AField.Layout.Row = 3; app.T3AField.Layout.Column = 1;
+
+            lb = uilabel(cg); lb.Text = 'b (col motion = L*cos(\theta))'; lb.Layout.Row = 4; lb.Layout.Column = 1;
+            app.T3BField = uieditfield(cg, 'numeric'); app.T3BField.Value = 17;
+            app.T3BField.Layout.Row = 5; app.T3BField.Layout.Column = 1;
+
+            lt = uilabel(cg); lt.Text = 'T (exposure time)'; lt.Layout.Row = 6; lt.Layout.Column = 1;
             app.T3TField = uieditfield(cg, 'numeric'); app.T3TField.Value = 1;
-            app.T3TField.Layout.Row = 6; app.T3TField.Layout.Column = 1;
+            app.T3TField.Layout.Row = 7; app.T3TField.Layout.Column = 1;
 
             app.T3PSFAxes = uiaxes(cg);
-            app.T3PSFAxes.Layout.Row = 7; app.T3PSFAxes.Layout.Column = 1;
+            app.T3PSFAxes.Layout.Row = 8; app.T3PSFAxes.Layout.Column = 1;
             app.T3PSFAxes.XTick = []; app.T3PSFAxes.YTick = [];
             box(app.T3PSFAxes, 'on');
             title(app.T3PSFAxes, 'PSF / H(u,v)', 'FontSize', 10);
 
-            lr = uilabel(cg); lr.Text = 'Inverse radius / threshold'; lr.Layout.Row = 8; lr.Layout.Column = 1;
+            lr = uilabel(cg); lr.Text = 'Inverse radius cutoff'; lr.Layout.Row = 9; lr.Layout.Column = 1;
             app.T3RadiusField = uieditfield(cg, 'numeric'); app.T3RadiusField.Value = 60;
             app.T3RadiusField.Limits = [1 Inf];
-            app.T3RadiusField.Layout.Row = 9; app.T3RadiusField.Layout.Column = 1;
+            app.T3RadiusField.Layout.Row = 10; app.T3RadiusField.Layout.Column = 1;
 
-            lk = uilabel(cg); lk.Text = 'Wiener K (NSR)'; lk.Layout.Row = 10; lk.Layout.Column = 1;
+            lk = uilabel(cg); lk.Text = 'Wiener K (NSR)'; lk.Layout.Row = 11; lk.Layout.Column = 1;
             app.T3KField = uieditfield(cg, 'numeric'); app.T3KField.Value = 0.01;
             app.T3KField.Limits = [0 Inf];
-            app.T3KField.Layout.Row = 11; app.T3KField.Layout.Column = 1;
+            app.T3KField.Layout.Row = 12; app.T3KField.Layout.Column = 1;
 
             app.T3StatusLabel = uilabel(g);
             app.T3StatusLabel.Layout.Row = 3;
             app.T3StatusLabel.Layout.Column = 1;
-            app.T3StatusLabel.BackgroundColor = [0.93 0.93 0.93];
+            app.T3StatusLabel.BackgroundColor = [0.2 0.2 0.2];
+            app.T3StatusLabel.FontColor = [0.95 0.95 0.95];
             app.T3StatusLabel.Text = 'Ready. Load a degraded image, set the motion parameters, then Run.';
         end
 
@@ -592,24 +655,40 @@ classdef FrequencyProcessingApp < matlab.apps.AppBase
             app.T2ParamControls = app.buildParamPanel(app.T2ParamGrid, specs);
             if strcmp(app.T2VariantDropDown.Value, 'notch')
                 app.T2NotchPanel.Visible = 'on';
+                if ~isempty(app.T2ControlGrid)
+                    app.T2ControlGrid.RowHeight = {50, 56, '1x'};
+                end
             else
                 app.T2NotchPanel.Visible = 'off';
+                if ~isempty(app.T2ControlGrid)
+                    app.T2ControlGrid.RowHeight = {50, '1x', 0};
+                end
             end
         end
 
         function onT2Load(app, ~)
-            img = app.loadImageDialog('Select Degraded Image');
+            img = app.loadImageDialog('Select Degraded Image', fullfile('E_periodic_noise_restoration', 'input'));
             if isempty(img)
                 return;
             end
             app.T2Image = img;
             app.T2Result = [];
+            if ndims(img) == 3 && size(img, 3) == 3
+                gImg = 0.299 * double(img(:,:,1)) + 0.587 * double(img(:,:,2)) + 0.114 * double(img(:,:,3));
+            else
+                gImg = double(img);
+            end
+            app.T2LogSpectrum = log(1 + abs(fftshift(fft2(gImg))));
             showImageOnAxes(app.T2InputAxes, img);
             showSpectrumOnAxes(app.T2SpecBeforeAxes, img);
+            hImg = findobj(app.T2SpecBeforeAxes, 'Type', 'image');
+            if ~isempty(hImg)
+                hImg.ButtonDownFcn = @(~, evt) app.onSpectrumClicked(evt);
+            end
             showImageOnAxes(app.T2ResultAxes, []);
             showSpectrumOnAxes(app.T2SpecAfterAxes, []);
             showMaskOnAxes(app.T2MaskAxes, []);
-            app.T2StatusLabel.Text = 'Degraded image loaded.';
+            app.T2StatusLabel.Text = 'Degraded image loaded. Tip: Hover or click on spectrum to inspect spikes, or click Inspect Spikes.';
         end
 
         function onT2Run(app, ~)
@@ -665,6 +744,112 @@ classdef FrequencyProcessingApp < matlab.apps.AppBase
             end
         end
 
+        function onSpectrumClicked(app, evt)
+            if isempty(app.T2Image)
+                return;
+            end
+            [rows, cols] = size(app.T2Image(:, :, 1));
+            x = evt.IntersectionPoint(1);
+            y = evt.IntersectionPoint(2);
+            u0 = round(y) - (floor(rows/2) + 1);
+            v0 = round(x) - (floor(cols/2) + 1);
+            app.T2NotchTable.Data = [app.T2NotchTable.Data; u0, v0];
+            app.T2StatusLabel.Text = sprintf('Added notch at u0=%d, v0=%d from click.', u0, v0);
+        end
+
+        function onWindowMouseMoved(app)
+            % Check if Tab 2 is active and image exists
+            if isempty(app.T2Image) || ~strcmp(app.TabGroup.SelectedTab.Title, 'Periodic Noise Restoration (E)')
+                return;
+            end
+            cp = app.T2SpecBeforeAxes.CurrentPoint;
+            x = cp(1, 1);
+            y = cp(1, 2);
+            [rows, cols] = size(app.T2Image(:, :, 1));
+            if x >= 1 && x <= cols && y >= 1 && y <= rows
+                u = round(y) - (floor(rows/2) + 1);
+                v = round(x) - (floor(cols/2) + 1);
+                dist = sqrt(u^2 + v^2);
+                if ~isempty(app.T2LogSpectrum)
+                    mag = app.T2LogSpectrum(round(y), round(x));
+                    app.T2StatusLabel.Text = sprintf('Spectrum Cursor: u = %d, v = %d  |  D = %.1f px  |  LogMag = %.2f', ...
+                        u, v, dist, mag);
+                else
+                    app.T2StatusLabel.Text = sprintf('Spectrum Cursor: u = %d, v = %d  |  D = %.1f px', u, v, dist);
+                end
+            end
+        end
+
+        function onInspectNotchSpikes(app, ~)
+            if isempty(app.T2Image)
+                uialert(app.UIFigure, 'Load a degraded image first.', 'No Image');
+                return;
+            end
+            I = app.T2Image;
+            if ndims(I) == 3 && size(I, 3) == 3
+                grayImg = 0.299 * double(I(:,:,1)) + 0.587 * double(I(:,:,2)) + 0.114 * double(I(:,:,3));
+            else
+                grayImg = double(I);
+            end
+            [rows, cols] = size(grayImg);
+            F = log(1 + abs(fftshift(fft2(grayImg))));
+            D = distanceFromCenter(rows, cols);
+            F(D < 18) = 0; % suppress central DC
+            [U, V] = centeredFreqGrid(rows, cols);
+
+            candidates = cell(0, 4);
+            peakCoords = zeros(0, 2);
+            for k = 1:5
+                [mval, midx] = max(F(:));
+                if mval < 10.5
+                    break;
+                end
+                [r, c] = ind2sub([rows, cols], midx);
+                u0 = r - (floor(rows/2) + 1);
+                v0 = c - (floor(cols/2) + 1);
+                radiusD = sqrt(u0^2 + v0^2);
+                candidates(end+1, :) = {sprintf('#%d', k), sprintf('(%d, %d)', u0, v0), ...
+                    sprintf('%.1f px', radiusD), sprintf('%.2f', mval)}; %#ok<AGROW>
+                peakCoords(end+1, :) = [u0, v0]; %#ok<AGROW>
+                F(sqrt((U - u0).^2 + (V - v0).^2) < 14) = 0;
+                F(sqrt((U + u0).^2 + (V + v0).^2) < 14) = 0;
+            end
+
+            if isempty(candidates)
+                uialert(app.UIFigure, 'No significant periodic noise spikes detected above threshold.', 'Spectrum Analysis');
+                return;
+            end
+
+            % Create interactive modal inspection dialog
+            d = uifigure('Name', 'Spectrum Noise Spike Inspector', 'Position', [400 300 480 320]);
+            dg = uigridlayout(d, [3, 1]);
+            dg.RowHeight = {30, '1x', 36};
+
+            lbl = uilabel(dg);
+            lbl.Text = 'Detected candidate noise spikes in spectrum (sorted by brightness):';
+            lbl.FontWeight = 'bold';
+
+            t = uitable(dg);
+            t.ColumnName = {'Rank', 'Frequency (u0, v0)', 'Radius D0', 'Peak Log Magnitude'};
+            t.ColumnWidth = {60, 140, 100, 130};
+            t.Data = candidates;
+
+            bg = uigridlayout(dg, [1, 2]);
+            bg.ColumnWidth = {'1x', '1x'};
+            applyBtn = uibutton(bg, 'push', 'Text', 'Add Selected to Notch Table');
+            applyBtn.FontWeight = 'bold';
+            applyBtn.ButtonPushedFcn = @(~, ~) app.applySpikeCandidates(d, peakCoords);
+
+            closeBtn = uibutton(bg, 'push', 'Text', 'Close (Just Inspecting)');
+            closeBtn.ButtonPushedFcn = @(~, ~) delete(d);
+        end
+
+        function applySpikeCandidates(app, dlg, peakCoords)
+            app.T2NotchTable.Data = peakCoords;
+            app.T2StatusLabel.Text = sprintf('Added %d candidate spike(s) to Notch Table.', size(peakCoords, 1));
+            delete(dlg);
+        end
+
     end
 
     % =====================================================================
@@ -673,7 +858,7 @@ classdef FrequencyProcessingApp < matlab.apps.AppBase
     methods (Access = private)
 
         function onT3LoadDegraded(app, ~)
-            img = app.loadImageDialog('Select Degraded Image');
+            img = app.loadImageDialog('Select Degraded Image', fullfile('F_motion_blur_restoration', 'input'));
             if isempty(img)
                 return;
             end
@@ -688,7 +873,7 @@ classdef FrequencyProcessingApp < matlab.apps.AppBase
         end
 
         function onT3LoadOriginal(app, ~)
-            img = app.loadImageDialog('Select Original Image (optional)');
+            img = app.loadImageDialog('Select Original Image (optional)', fullfile('F_motion_blur_restoration', 'reference'));
             if isempty(img)
                 return;
             end
@@ -725,6 +910,13 @@ classdef FrequencyProcessingApp < matlab.apps.AppBase
             app.T3StatusLabel.Text = sprintf('a=%g b=%g T=%g | radius=%g K=%g | %.2fs', a, b, T, radiusLimit, K, elapsed);
         end
 
+        function onT3LengthAngleChanged(app, ~)
+            L = app.T3LengthField.Value;
+            theta = app.T3AngleField.Value;
+            app.T3AField.Value = L * sind(theta);
+            app.T3BField.Value = L * cosd(theta);
+        end
+
         function onT3Reset(app, ~)
             app.T3DegradedImage = [];
             app.T3OriginalImage = [];
@@ -735,8 +927,10 @@ classdef FrequencyProcessingApp < matlab.apps.AppBase
             showImageOnAxes(app.T3InverseResultAxes, []);
             showImageOnAxes(app.T3WienerResultAxes, []);
             showMaskOnAxes(app.T3PSFAxes, []);
-            app.T3AField.Value = 0.1;
-            app.T3BField.Value = 0.1;
+            app.T3LengthField.Value = 17;
+            app.T3AngleField.Value = 0;
+            app.T3AField.Value = 0;
+            app.T3BField.Value = 17;
             app.T3TField.Value = 1;
             app.T3RadiusField.Value = 60;
             app.T3KField.Value = 0.01;

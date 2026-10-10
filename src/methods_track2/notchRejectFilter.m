@@ -4,7 +4,7 @@ function H = notchRejectFilter(rows, cols, notchPoints, D0)
         D0 = 6;
     end
 
-    [V, U] = centeredFreqGrid(rows, cols);
+    [U, V] = centeredFreqGrid(rows, cols);
     H = ones(rows, cols);
     n = 2;
 
