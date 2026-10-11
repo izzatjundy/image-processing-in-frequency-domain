@@ -631,8 +631,13 @@ classdef FrequencyProcessingApp < matlab.apps.AppBase
                 return;
             end
             app.T1Result = J;
+            isHighpass = strcmp(groupKey, 'highpass');
             showImageOnAxes(app.T1ResultAxes, J);
-            showSpectrumOnAxes(app.T1ResultSpecAxes, J);
+            if isHighpass
+                showSpectrumOnAxes(app.T1ResultSpecAxes, app.T1Image, H);
+            else
+                showSpectrumOnAxes(app.T1ResultSpecAxes, J);
+            end
             showMaskOnAxes(app.T1MaskAxes, H);
             app.T1StatusLabel.Text = sprintf('%s | %s | %.2fs', methodLabel, paramStr, elapsed);
         end

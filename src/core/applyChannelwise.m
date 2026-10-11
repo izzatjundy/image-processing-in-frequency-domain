@@ -3,8 +3,10 @@ function J = applyChannelwise(I, fn)
 %   of I, recombining color images automatically. Shared
 %   infrastructure reused across both tracks.
     if ndims(I) == 3 && size(I, 3) == 3
-        J = zeros(size(I), 'uint8');
-        for c = 1:3
+        firstChannel = fn(I(:, :, 1));
+        J = zeros(size(I), 'like', firstChannel);
+        J(:, :, 1) = firstChannel;
+        for c = 2:3
             J(:, :, c) = fn(I(:, :, c));
         end
     else

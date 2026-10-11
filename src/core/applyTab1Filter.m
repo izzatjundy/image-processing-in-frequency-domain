@@ -5,6 +5,7 @@ function [J, H, methodLabel, paramStr] = applyTab1Filter(I, groupKey, variantKey
 %   display), and labels for the status bar / report.
     [rows, cols] = size(I(:, :, 1));
     D = distanceFromCenter(rows, cols);
+    absoluteOutput = false;
 
     switch groupKey
         case 'lowpass'
@@ -25,6 +26,7 @@ function [J, H, methodLabel, paramStr] = applyTab1Filter(I, groupKey, variantKey
                     error('applyTab1Filter:unknownVariant', 'Unknown low-pass variant: %s', variantKey);
             end
         case 'highpass'
+            absoluteOutput = true;
             switch variantKey
                 case 'ideal'
                     H = ihpf(D, params.D0);
@@ -49,5 +51,5 @@ function [J, H, methodLabel, paramStr] = applyTab1Filter(I, groupKey, variantKey
             error('applyTab1Filter:unknownGroup', 'Unknown group: %s', groupKey);
     end
 
-    J = applyChannelwise(I, @(ch) applyFreqFilter(ch, H));
+    J = applyChannelwise(I, @(ch) applyFreqFilter(ch, H, absoluteOutput));
 end
