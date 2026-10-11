@@ -1,6 +1,4 @@
 function H = brightnessEmphasisFilter(D, D0, gain)
 %BRIGHTNESSEMPHASISFILTER Frequency-domain brightness-enhancement
-    warning('brightnessEmphasisFilter:notImplemented', ...
-        'brightnessEmphasisFilter is a placeholder. Implement it (Track 1, Part D).');
-    H = ones(size(D));
+    H = 1 + (gain - 1) .* glpf(D, D0);
 end
