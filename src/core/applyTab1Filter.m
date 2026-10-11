@@ -1,8 +1,5 @@
 function [J, H, methodLabel, paramStr] = applyTab1Filter(I, groupKey, variantKey, params)
-%APPLYTAB1FILTER Dispatch to the right Tab-1 transfer function
-%   (Parts B, C, D), apply it channel-by-channel via
-%   APPLYFREQFILTER, and return the result, the mask H(u,v) (for
-%   display), and labels for the status bar / report.
+%APPLYTAB1FILTER Apply a selected low-pass, high-pass, or brightness filter.
     [rows, cols] = size(I(:, :, 1));
     D = distanceFromCenter(rows, cols);
     absoluteOutput = false;

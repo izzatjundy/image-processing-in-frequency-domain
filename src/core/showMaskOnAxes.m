@@ -1,6 +1,5 @@
 function showMaskOnAxes(ax, H)
-%SHOWMASKONAXES Visualize a (possibly complex) transfer function
-%   H(u,v) as a grayscale image on UIAXES ax, using its magnitude.
+%SHOWMASKONAXES Display the magnitude of a frequency-domain mask.
     cla(ax);
     if isempty(H)
         ax.XTick = [];

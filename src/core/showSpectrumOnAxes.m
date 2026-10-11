@@ -1,7 +1,5 @@
 function showSpectrumOnAxes(ax, I, H)
-%SHOWSPECTRUMONAXES Plot the log-magnitude centered spectrum of I (for
-%   color images, computed on a luminance approximation) onto UIAXES
-%   ax. If H is provided, show the spectrum after applying H to I.
+%SHOWSPECTRUMONAXES Display an image's centered log-magnitude spectrum.
     cla(ax);
     if isempty(I)
         ax.XTick = [];

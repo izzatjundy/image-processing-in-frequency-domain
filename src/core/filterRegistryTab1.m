@@ -1,8 +1,5 @@
 function registry = filterRegistryTab1()
-%FILTERREGISTRYTAB1 Groups/variants/parameters for the Frequency
-%   Filtering tab (Parts B, C, D). The GUI builds its dropdowns and
-%   parameter panel from this -- add a variant here and it appears in
-%   the app with no other code changes.
+%FILTERREGISTRYTAB1 Define filter groups, variants, and parameters for Tab 1.
     registry = struct('Key', {}, 'Label', {}, 'Variants', {});
 
     registry(end+1) = struct('Key', 'lowpass', 'Label', 'Low-Pass Filtering', 'Variants', variantList( ...

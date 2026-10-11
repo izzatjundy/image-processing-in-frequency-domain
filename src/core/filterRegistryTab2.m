@@ -1,8 +1,5 @@
 function registry = filterRegistryTab2()
-%FILTERREGISTRYTAB2 Groups/variants/parameters for the Periodic Noise
-%   Restoration tab (Part E). Notch Reject has no numeric params here
-%   besides a shared radius -- its center points come from a separate
-%   editable table in the GUI, not this parameter panel.
+%FILTERREGISTRYTAB2 Define filter groups, variants, and parameters for Tab 2.
     registry = struct('Key', {}, 'Label', {}, 'Variants', {});
 
     registry(end+1) = struct('Key', 'bandreject', 'Label', 'Bandreject Filter', 'Variants', variantList( ...

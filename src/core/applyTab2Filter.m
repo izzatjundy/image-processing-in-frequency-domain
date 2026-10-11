@@ -1,7 +1,5 @@
 function [J, H, methodLabel, paramStr] = applyTab2Filter(I, groupKey, variantKey, params, notchPoints)
-%APPLYTAB2FILTER Dispatch to the right Tab-2 restoration filter
-%   (Part E). NOTCHPOINTS is an Nx2 matrix of (u0, v0) pairs, used
-%   only when variantKey is 'notch'.
+%APPLYTAB2FILTER Apply a selected bandreject or notch-reject filter.
     [rows, cols] = size(I(:, :, 1));
     D = distanceFromCenter(rows, cols);
 

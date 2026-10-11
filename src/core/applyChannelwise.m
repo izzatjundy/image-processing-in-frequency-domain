@@ -1,7 +1,5 @@
 function J = applyChannelwise(I, fn)
-%APPLYCHANNELWISE Apply a single-channel function FN to every channel
-%   of I, recombining color images automatically. Shared
-%   infrastructure reused across both tracks.
+%APPLYCHANNELWISE Apply FN to each image channel.
     if ndims(I) == 3 && size(I, 3) == 3
         firstChannel = fn(I(:, :, 1));
         J = zeros(size(I), 'like', firstChannel);
