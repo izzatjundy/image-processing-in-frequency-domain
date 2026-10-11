@@ -201,6 +201,19 @@ classdef FrequencyProcessingApp < matlab.apps.AppBase
             end
         end
 
+        function folderName = tab1DefaultInputFolder(app)
+            switch app.T1GroupDropDown.Value
+                case 'lowpass'
+                    folderName = fullfile('B_smoothing_blurring_frequency', 'input');
+                case 'highpass'
+                    folderName = fullfile('C_high_pass_filtering_frequency', 'input');
+                case 'brightness'
+                    folderName = fullfile('D_brightness_frequency', 'input');
+                otherwise
+                    folderName = '';
+            end
+        end
+
         function img = loadImageDialog(app, promptText, defaultSubdir)
             img = [];
             % Resolve data directory relative to repository root
@@ -584,7 +597,7 @@ classdef FrequencyProcessingApp < matlab.apps.AppBase
         end
 
         function onT1Load(app, ~)
-            img = app.loadImageDialog('Select Input Image');
+            img = app.loadImageDialog('Select Input Image', app.tab1DefaultInputFolder());
             if isempty(img)
                 return;
             end
@@ -967,12 +980,8 @@ classdef FrequencyProcessingApp < matlab.apps.AppBase
 
         function app = FrequencyProcessingApp()
             srcRoot = fileparts(mfilename('fullpath'));
-            coreRoot = fullfile(srcRoot, 'core');
             if exist(srcRoot, 'dir')
-                addpath(srcRoot);
-            end
-            if exist(coreRoot, 'dir')
-                addpath(coreRoot);
+                addpath(genpath(srcRoot));
             end
 
             createComponents(app);
